@@ -8,7 +8,7 @@ A 3-stage Machine Learning pipeline designed to predict U.S. commercial truckloa
 
 freight pricing is highly volatile, driven by regional capacity shifts, seasonal surges, payload constraints, and geographic route complexity. Standard machine learning models frequently overfit by memorizing historical route baselines rather than learning underlying spatial and temporal dynamics.
 
-This project implements a robust, modular 3-stage ML pipeline using **CatBoost Regressor** trained on a log-transformed Rate-Per-Mile ($\text{log\_rpm}$) target. By pairing a route-isolated 5-fold `GroupKFold` validation strategy with lag-shifted 14-day trailing rolling features and dual spatial circuity metrics, the pipeline achieves an Out-of-Fold (OOF) Cross-Validation Mean RMSE of **$581.74** and a holdout test MAE of **$104.21** ($R^2 = 0.838$).
+This project implements a robust, modular 3-stage ML pipeline using **CatBoost Regressor** trained on a log-transformed Rate-Per-Mile (`log_rpm`) target. By pairing a route-isolated 5-fold `GroupKFold` validation strategy with lag-shifted 14-day trailing rolling features and dual spatial circuity metrics, the pipeline achieves an Out-of-Fold (OOF) Cross-Validation Mean RMSE of **$581.74** and a holdout test MAE of **$104.21** (R² = 0.838).
 
 ---
 
@@ -17,7 +17,7 @@ This project implements a robust, modular 3-stage ML pipeline using **CatBoost R
 Predicting freight rates presents three key modeling challenges:
 
 1. **Spatial Leakage & Baseline Memorization:** Traditional random train/test splits place transactions from identical shipping routes into both training and test sets. Decision trees end up memorizing specific lane prices rather than generalizing to unseen corridors.
-2. **Target Variance Heteroscedasticity:** Total load prices scale linearly with distance ($\text{posted\_rate} \approx \text{rate} \times \text{distance}$). Standard RMSE loss optimization causes long-haul loads ($1,500+\text{ miles}$) with high absolute dollar variance to dominate model updates while degrading short-haul pricing accuracy.
+2. **Target Variance Heteroscedasticity:** Total load prices scale linearly with distance (`posted_rate ≈ rate × distance`). Standard RMSE loss optimization causes long-haul loads (1,500+ miles) with high absolute dollar variance to dominate model updates while degrading short-haul pricing accuracy.
 3. **Future Data Dependency:** Real-time bidding signals (`quote_signal`, `market_index`) are frequently missing or unavailable for future prediction windows, leading to pipeline failures or flatlined synthetic imputations.
 
 ---
@@ -31,14 +31,14 @@ freight-rate-ml-pipeline/
 ├── outputs/
 │   ├── validation_predictions.csv
 │   ├── december_predictions.csv
-│   └── candidate_december.png    # December benchmark forecast chart
+│   └── candidate_december.png     # December benchmark forecast chart
 ├── src/
-│   ├── preprocess.py             # Stage 1: Data cleaning & feature engineering
-│   ├── train.py                  # Stage 2: GroupKFold training 
-│   └── predict.py                # Stage 3: Inference & inverse dollar reconstruction
-├── requirements.txt              # Project dependencies
-├── score.py                      # Evaluation script 
-└── README.md                     # Project documentation
+│   ├── preprocess.py              # Stage 1: Data cleaning & feature engineering
+│   ├── train.py                   # Stage 2: GroupKFold training 
+│   └── predict.py                 # Stage 3: Inference & inverse dollar reconstruction
+├── requirements.txt               # Project dependencies
+├── score.py                       # Evaluation script 
+└── README.md                      # Project documentation
 
 ```
 
@@ -94,14 +94,13 @@ Exploratory analysis on historical transaction data revealed critical structural
 
 Rather than predicting total dollar amounts directly, the target is converted to Rate-Per-Mile in log space:
 
-$$\text{rate\_per\_mile} = \frac{\text{posted\_rate}}{\text{distance}}$$
+`rate_per_mile = posted_rate / distance`
 
-$$\text{target\_log\_rpm} = \ln(1 + \text{rate\_per\_mile})$$
-
+`target_log_rpm = ln(1 + rate_per_mile)`
 
 At inference, total rates are analytically reconstructed without loss of precision:
 
-$$\widehat{\text{posted\_rate}} = \left(\exp(\hat{y}_{\text{target\_log\_rpm}}) - 1\right) \times \text{distance}$$
+`predicted_posted_rate = (exp(predicted_target_log_rpm) - 1) * distance`
 
 ### 2. Dual-Distance Spatial Metrics
 
@@ -110,7 +109,7 @@ $$\widehat{\text{posted\_rate}} = \left(\exp(\hat{y}_{\text{target\_log\_rpm}}) 
 
 ### 3. Lag-Shifted 14-Day Trailing Rolling Statistics
 
-Calculates historical rate averages grouped per shipping lane $$\text{lane\_id} = \text{pickup} + \text{"} \vert \text{"} + \text{delivery}$$:
+Calculates historical rate averages grouped per shipping lane (`lane_id = pickup + "|" + delivery`):
 
 ```python
 df['route_rolling_14d_mean'] = (
@@ -120,12 +119,12 @@ df['route_rolling_14d_mean'] = (
 
 ```
 
-* **Leakage Prevention:** Applying `.shift(1)` guarantees that a prediction for day $t$ strictly evaluates historical transactions from days $t-14$ through $t-1$.
+* **Leakage Prevention:** Applying `.shift(1)` guarantees that a prediction for day t strictly evaluates historical transactions from days t-14 through t-1.
 * **Cold-Start Fallback:** Unseen lanes inherit the global historical training median.
 
 ### 4. Feature Pruning
 
-External indicators (`market_index` and `quote_signal`) were completely excluded. SHAP analysis confirmed `quote_signal` contributed less than $0.5\%$ of predictive weight ($\approx 0.002$), while removing these columns eliminated missing-data issues for future inference.
+External indicators (`market_index` and `quote_signal`) were completely excluded. SHAP analysis confirmed `quote_signal` contributed less than 0.5% of predictive weight (~0.002), while removing these columns eliminated missing-data issues for future inference.
 
 ---
 
@@ -133,7 +132,7 @@ External indicators (`market_index` and `quote_signal`) were completely excluded
 
 Multiple candidate architectures were benchmarked on identical 5-fold `GroupKFold` splits. **CatBoost Regressor** achieved the best predictive performance:
 
-| Architecture Family | Holdout RMSE ($) | Holdout MAE ($) | $R^2$ Score |
+| Architecture Family | Holdout RMSE ($) | Holdout MAE ($) | R² Score |
 | --- | --- | --- | --- |
 | Naive Historical Mean Baseline | $1,486.48 | $912.10 | 0.000 |
 | Baseline Ridge Regression | $724.26 | $268.43 | 0.512 |
@@ -155,7 +154,7 @@ Multiple candidate architectures were benchmarked on identical 5-fold `GroupKFol
 
 Validation is structured around a **5-Fold `GroupKFold**` grouped strictly on `lane_id`:
 
-$$\text{lane\_id} = \text{pickup} + \text{"|"} + \text{delivery}$$
+`lane_id = pickup + "|" + delivery`
 
 This forces 100% of historical transactions for any specific origin-destination pair into either the training fold or the validation fold, but never both.
 
@@ -193,38 +192,40 @@ pip install -r requirements.txt
 
 ```bash
 pip install -r requirements.txt
+
 ```
 
 ### Train the model
 
 ```bash
 python src/train.py
+
 ```
 
 ### Generate predictions
 
 ```bash
 python src/predict.py
+
 ```
 
 ### Validate the submission
 
 ```bash
 python score.py --predictions validation-predictions.csv --december-predictions data/december-chart-inputs.csv
+
 ```
 
 ---
-
-
 
 ## Generated Artifacts
 
 Running the pipeline generates:
 
-models/catboost_model.cbm
-validation_predictions.csv
-Updated data/december-chart-inputs.csv
-scorer_results/candidate_december.png
+* models/catboost_model.cbm
+* validation_predictions.csv
+* Updated data/december-chart-inputs.csv
+* scorer_results/candidate_december.png
 
 ## Author
 
