@@ -98,6 +98,7 @@ $$\text{rate\_per\_mile} = \frac{\text{posted\_rate}}{\text{distance}}$$
 
 $$\text{target\_log\_rpm} = \ln(1 + \text{rate\_per\_mile})$$
 
+
 At inference, total rates are analytically reconstructed without loss of precision:
 
 $$\widehat{\text{posted\_rate}} = \left(\exp(\hat{y}_{\text{target\_log\_rpm}}) - 1\right) \times \text{distance}$$
@@ -109,7 +110,7 @@ $$\widehat{\text{posted\_rate}} = \left(\exp(\hat{y}_{\text{target\_log\_rpm}}) 
 
 ### 3. Lag-Shifted 14-Day Trailing Rolling Statistics
 
-Calculates historical rate averages grouped per shipping lane ($\text{lane\_id} = \text{pickup} + \text{"\vert{}"} + \text{delivery}$):
+Calculates historical rate averages grouped per shipping lane $$\text{lane\_id} = \text{pickup} + \text{"} \vert \text{"} + \text{delivery}$$:
 
 ```python
 df['route_rolling_14d_mean'] = (
@@ -154,7 +155,7 @@ Multiple candidate architectures were benchmarked on identical 5-fold `GroupKFol
 
 Validation is structured around a **5-Fold `GroupKFold**` grouped strictly on `lane_id`:
 
-$$\text{lane\_id} = \text{pickup} + \text{"\vert{}"} + \text{delivery}$$
+$$\text{lane\_id} = \text{pickup} + \text{"|"} + \text{delivery}$$
 
 This forces 100% of historical transactions for any specific origin-destination pair into either the training fold or the validation fold, but never both.
 
